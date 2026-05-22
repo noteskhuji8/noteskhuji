@@ -4,7 +4,7 @@ import { blogPosts } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
 
-export const Route = createFileRoute("/blog/$slug")({
+export const Route = createFileRoute("/blog_/$slug")({
   component: BlogPost,
   loader: ({ params }) => {
     const post = blogPosts.find((p) => p.slug === params.slug);
