@@ -61,7 +61,7 @@ function NoteDetails() {
               </Link>
               <span>·</span>
               <span>{note.university}</span>
-              {note.tags.map((t) => (
+              {note.tags.map((t: string) => (
                 <Badge key={t} variant="outline" className="ml-1">{t}</Badge>
               ))}
             </div>
