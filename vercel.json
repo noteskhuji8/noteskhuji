@@ -1,8 +1,0 @@
-{
-  "version": 2,
-  "outputDirectory": "dist/client",
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/index.html" }
-  ]
-}
