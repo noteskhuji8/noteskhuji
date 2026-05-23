@@ -22,25 +22,29 @@ export const Route = createFileRoute("/dashboard")({
   },
 
   // 2. DATA LOADER: Fetches the user's actual data
-  loader: async () => {
-    // TODO: Replace with real database fetch for the logged-in user
-    // e.g., const { data } = await supabase.from('profiles').select('*').single()
-    
-    // Returning dummy structure so the UI has variables to map to
-    return {
-      user: {
-        name: "Student", // Will be fetched from DB
-        role: "Student"
-      },
-      userStats: {
-        uploads: 0,
-        downloads: 0,
-        earnings: 0,
-        rating: 0.0,
-      }
-    };
-  },
+  // Inside your loader:
+loader: async () => {
+  // 1. Get the current user
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // 2. Fetch their real data
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('name, uploads_count, downloads_count, earnings, rating')
+    .eq('id', user.id)
+    .single();
 
+  return {
+    user: { name: profile.name, role: "Student" },
+    userStats: {
+      uploads: profile.uploads_count,
+      downloads: profile.downloads_count,
+      earnings: profile.earnings,
+      rating: profile.rating,
+    }
+  };
+},
+  
   head: () => ({ meta: [{ title: "Dashboard — NotesKhuji" }] }),
   component: Dashboard,
 });
