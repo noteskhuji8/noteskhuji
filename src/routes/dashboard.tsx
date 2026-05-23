@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,32 +8,78 @@ import { notes } from "@/lib/mock-data";
 import { Upload, Wallet, FileText, Download, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
-  component: Dashboard,
+  // 1. ROUTE GUARD: Checks auth before the page even tries to load
+  beforeLoad: async () => {
+    // TODO: Replace with your real auth check (e.g., supabase.auth.getSession())
+    // Set this to false right now to test your redirect in an incognito window!
+    const isAuthenticated = true; 
+
+    if (!isAuthenticated) {
+      throw redirect({
+        to: "/login",
+      });
+    }
+  },
+
+  // 2. DATA LOADER: Fetches the user's actual data
+  loader: async () => {
+    // TODO: Replace with real database fetch for the logged-in user
+    // e.g., const { data } = await supabase.from('profiles').select('*').single()
+    
+    // Returning dummy structure so the UI has variables to map to
+    return {
+      user: {
+        name: "Student", // Will be fetched from DB
+        role: "Student"
+      },
+      userStats: {
+        uploads: 0,
+        downloads: 0,
+        earnings: 0,
+        rating: 0.0,
+      }
+    };
+  },
+
   head: () => ({ meta: [{ title: "Dashboard — NotesKhuji" }] }),
+  component: Dashboard,
 });
 
-const stats = [
-  { label: "Notes uploaded", value: "12", icon: FileText },
-  { label: "Total downloads", value: "1,842", icon: Download },
-  { label: "Earnings (BDT)", value: "৳ 14,520", icon: Wallet },
-  { label: "Avg. rating", value: "4.8", icon: TrendingUp },
-];
-
 function Dashboard() {
+  // 3. CONSUME DATA: Pull the verified data from the loader
+  const { user, userStats } = Route.useLoaderData();
+
+  // 4. MAP STATS DYNAMICALLY: Use the fetched data instead of hardcoded strings
+  const displayStats = [
+    { label: "Notes uploaded", value: userStats.uploads.toString(), icon: FileText },
+    { label: "Total downloads", value: userStats.downloads.toLocaleString(), icon: Download },
+    { label: "Earnings (BDT)", value: `৳ ${userStats.earnings.toLocaleString()}`, icon: Wallet },
+    { label: "Avg. rating", value: userStats.rating.toFixed(1), icon: TrendingUp },
+  ];
+
+  // Keeping mock notes for the UI tabs until your notes database table is connected
   const my = notes.slice(0, 4);
   const purchased = notes.slice(4, 7);
+
   return (
     <SiteShell>
       <section className="border-b border-border/60 bg-muted/20">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Student</Badge>
-              <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Welcome back, Tanvir 👋</h1>
+              <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">
+                {user.role}
+              </Badge>
+              {/* Dynamic Name */}
+              <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">
+                Welcome back, {user.name} 👋
+              </h1>
               <p className="mt-1 text-muted-foreground">Here's a snapshot of your NotesKhuji activity.</p>
             </div>
             <Link to="/upload">
-              <Button className="brand-gradient gap-2 text-white"><Upload className="h-4 w-4" /> Upload new note</Button>
+              <Button className="brand-gradient gap-2 text-white">
+                <Upload className="h-4 w-4" /> Upload new note
+              </Button>
             </Link>
           </div>
         </div>
@@ -41,7 +87,8 @@ function Dashboard() {
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((s) => (
+          {/* Dynamic Stats Rendering */}
+          {displayStats.map((s) => (
             <div key={s.label} className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">{s.label}</p>
