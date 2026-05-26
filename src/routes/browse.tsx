@@ -128,7 +128,11 @@ function Browse() {
               <span>{filtered.length} results</span>
               <Link to="/upload" className="text-primary hover:underline">+ Upload your notes</Link>
             </div>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
+                Loading notes…
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
                 No notes match your filters.
               </div>
@@ -137,6 +141,7 @@ function Browse() {
                 {filtered.map((n) => <NoteCard key={n.id} note={n} />)}
               </div>
             )}
+
           </div>
         </div>
       </section>
