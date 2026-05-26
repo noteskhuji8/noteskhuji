@@ -22,7 +22,9 @@ export function Navbar() {
     navigate({ to: "/" });
   };
 
+  return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
+
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2">
           <img src={logo} alt="NotesKhuji" className="h-8 w-8 rounded-md" />
@@ -48,15 +50,29 @@ export function Navbar() {
               <Search className="h-4 w-4" /> Search
             </Button>
           </Link>
-          <Link to="/login">
-            <Button variant="ghost" size="sm">Log in</Button>
-          </Link>
+          {!loading && user ? (
+            <>
+              <Link to="/dashboard">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <LayoutDashboard className="h-4 w-4" /> Dashboard
+                </Button>
+              </Link>
+              <Button variant="ghost" size="sm" className="gap-2" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4" /> Sign out
+              </Button>
+            </>
+          ) : (
+            <Link to="/login">
+              <Button variant="ghost" size="sm">Log in</Button>
+            </Link>
+          )}
           <Link to="/upload">
             <Button size="sm" className="brand-gradient gap-2 text-white shadow-md hover:opacity-95">
               <Upload className="h-4 w-4" /> Upload
             </Button>
           </Link>
         </div>
+
         <button
           className="rounded-md p-2 md:hidden"
           onClick={() => setOpen(!open)}
