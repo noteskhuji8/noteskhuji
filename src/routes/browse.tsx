@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { NoteCard } from "@/components/notes/NoteCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { notes, subjects, universities } from "@/lib/mock-data";
+import { subjects, universities, type Note } from "@/lib/mock-data";
+import { fetchNotes } from "@/lib/notes-api";
 
 export const Route = createFileRoute("/browse")({
   component: Browse,
@@ -23,17 +24,27 @@ function Browse() {
   const [subject, setSubject] = useState<string | null>(null);
   const [uni, setUni] = useState<string | null>(null);
   const [tier, setTier] = useState<"all" | "free" | "premium">("all");
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = useMemo(() => {
-    return notes.filter((n) => {
-      if (subject && n.subjectSlug !== subject) return false;
-      if (uni && n.university !== universities.find((u) => u.slug === uni)?.short) return false;
-      if (tier === "free" && n.price !== 0) return false;
-      if (tier === "premium" && n.price === 0) return false;
-      if (q && !`${n.title} ${n.subject} ${n.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())) return false;
-      return true;
-    });
-  }, [q, subject, uni, tier]);
+  const uniShort = useMemo(
+    () => (uni ? universities.find((u) => u.slug === uni)?.short ?? null : null),
+    [uni],
+  );
+
+  useEffect(() => {
+    setLoading(true);
+    const t = setTimeout(() => {
+      fetchNotes({ q, subjectSlug: subject, universityShort: uniShort, tier })
+        .then(setNotes)
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q, subject, uniShort, tier]);
+
+  const filtered = notes;
+
 
   return (
     <SiteShell>
@@ -41,8 +52,9 @@ function Browse() {
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Browse Notes</h1>
           <p className="mt-2 text-muted-foreground">
-            {notes.length.toLocaleString()}+ verified notes from top Bangladeshi universities.
+            Verified notes from top Bangladeshi universities.
           </p>
+
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <div className="flex flex-1 items-center gap-2 rounded-xl border border-border bg-background px-3">
               <Search className="h-4 w-4 text-muted-foreground" />
