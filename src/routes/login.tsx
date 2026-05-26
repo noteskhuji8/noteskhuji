@@ -1,16 +1,49 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useState } from "react";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    redirect: (s.redirect as string) || "/dashboard",
+  }),
   component: Login,
   head: () => ({ meta: [{ title: "Log in — NotesKhuji" }] }),
 });
 
 function Login() {
+  const navigate = useNavigate();
+  const { redirect } = useSearch({ from: "/login" });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Welcome back!");
+    navigate({ to: redirect });
+  };
+
+  const handleGoogle = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + redirect,
+    });
+    if (result.error) toast.error("Google sign-in failed");
+  };
+
   return (
     <SiteShell>
       <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-md place-items-center px-4 py-12">
@@ -21,21 +54,25 @@ function Login() {
           </div>
           <p className="mt-1 text-sm text-muted-foreground">Log in to access your notes and dashboard.</p>
 
-          <form className="mt-6 space-y-4">
+          <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@university.edu.bd" className="mt-1.5" />
+              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@university.edu.bd" className="mt-1.5" />
             </div>
             <div>
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="••••••••" className="mt-1.5" />
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="mt-1.5" />
             </div>
-            <Button type="button" className="brand-gradient w-full text-white">Log in</Button>
+            <Button type="submit" disabled={loading} className="brand-gradient w-full text-white">
+              {loading ? "Signing in…" : "Log in"}
+            </Button>
           </form>
           <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
             <div className="h-px flex-1 bg-border" /> OR <div className="h-px flex-1 bg-border" />
           </div>
-          <Button variant="outline" className="w-full">Continue with Google</Button>
+          <Button type="button" variant="outline" className="w-full" onClick={handleGoogle}>
+            Continue with Google
+          </Button>
           <p className="mt-6 text-center text-sm text-muted-foreground">
             New here? <Link to="/register" className="font-medium text-primary hover:underline">Create account</Link>
           </p>
