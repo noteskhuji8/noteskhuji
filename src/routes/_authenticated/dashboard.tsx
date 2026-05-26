@@ -1,69 +1,47 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NoteCard } from "@/components/notes/NoteCard";
-import { notes } from "@/lib/mock-data";
 import { Upload, Wallet, FileText, Download, TrendingUp } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { fetchMyNotes } from "@/lib/notes-api";
+import { supabase } from "@/integrations/supabase/client";
+import type { Note } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/dashboard")({
-  // 1. ROUTE GUARD: Checks auth before the page even tries to load
-  beforeLoad: async () => {
-    // TODO: Replace with your real auth check (e.g., supabase.auth.getSession())
-    // Set this to false right now to test your redirect in an incognito window!
-    const isAuthenticated = true; 
-
-    if (!isAuthenticated) {
-      throw redirect({
-        to: "/login",
-      });
-    }
-  },
-
-  // 2. DATA LOADER: Fetches the user's actual data
-  // Inside your loader:
-loader: async () => {
-  // 1. Get the current user
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  // 2. Fetch their real data
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('name, uploads_count, downloads_count, earnings, rating')
-    .eq('id', user.id)
-    .single();
-
-  return {
-    user: { name: profile.name, role: "Student" },
-    userStats: {
-      uploads: profile.uploads_count,
-      downloads: profile.downloads_count,
-      earnings: profile.earnings,
-      rating: profile.rating,
-    }
-  };
-},
-  
+export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — NotesKhuji" }] }),
   component: Dashboard,
 });
 
 function Dashboard() {
-  // 3. CONSUME DATA: Pull the verified data from the loader
-  const { user, userStats } = Route.useLoaderData();
+  const { user } = useAuth();
+  const [profileName, setProfileName] = useState<string>("");
+  const [my, setMy] = useState<Note[]>([]);
 
-  // 4. MAP STATS DYNAMICALLY: Use the fetched data instead of hardcoded strings
-  const displayStats = [
-    { label: "Notes uploaded", value: userStats.uploads.toString(), icon: FileText },
-    { label: "Total downloads", value: userStats.downloads.toLocaleString(), icon: Download },
-    { label: "Earnings (BDT)", value: `৳ ${userStats.earnings.toLocaleString()}`, icon: Wallet },
-    { label: "Avg. rating", value: userStats.rating.toFixed(1), icon: TrendingUp },
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => setProfileName(data?.full_name ?? user.email ?? ""));
+    fetchMyNotes(user.id).then(setMy).catch(console.error);
+  }, [user]);
+
+  const totalDownloads = my.reduce((s, n) => s + n.downloads, 0);
+  const earnings = my.reduce((s, n) => s + n.price * n.downloads, 0);
+  const avgRating = my.length ? my.reduce((s, n) => s + n.rating, 0) / my.length : 0;
+
+  const stats = [
+    { label: "Notes uploaded", value: my.length.toString(), icon: FileText },
+    { label: "Total downloads", value: totalDownloads.toLocaleString(), icon: Download },
+    { label: "Earnings (BDT)", value: `৳ ${earnings.toLocaleString()}`, icon: Wallet },
+    { label: "Avg. rating", value: avgRating.toFixed(1), icon: TrendingUp },
   ];
-
-  // Keeping mock notes for the UI tabs until your notes database table is connected
-  const my = notes.slice(0, 4);
-  const purchased = notes.slice(4, 7);
 
   return (
     <SiteShell>
@@ -72,11 +50,10 @@ function Dashboard() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">
-                {user.role}
+                Student
               </Badge>
-              {/* Dynamic Name */}
               <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">
-                Welcome back, {user.name} 👋
+                Welcome back, {profileName || "Student"} 👋
               </h1>
               <p className="mt-1 text-muted-foreground">Here's a snapshot of your NotesKhuji activity.</p>
             </div>
@@ -91,8 +68,7 @@ function Dashboard() {
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Dynamic Stats Rendering */}
-          {displayStats.map((s) => (
+          {stats.map((s) => (
             <div key={s.label} className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">{s.label}</p>
@@ -106,18 +82,19 @@ function Dashboard() {
         <Tabs defaultValue="uploaded" className="mt-10">
           <TabsList>
             <TabsTrigger value="uploaded">My uploads</TabsTrigger>
-            <TabsTrigger value="purchased">Purchased</TabsTrigger>
             <TabsTrigger value="saved">Saved</TabsTrigger>
           </TabsList>
           <TabsContent value="uploaded" className="mt-6">
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {my.map((n) => <NoteCard key={n.id} note={n} />)}
-            </div>
-          </TabsContent>
-          <TabsContent value="purchased" className="mt-6">
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {purchased.map((n) => <NoteCard key={n.id} note={n} />)}
-            </div>
+            {my.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
+                You haven't uploaded any notes yet.{" "}
+                <Link to="/upload" className="text-primary hover:underline">Upload your first note</Link>.
+              </div>
+            ) : (
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {my.map((n) => <NoteCard key={n.id} note={n} />)}
+              </div>
+            )}
           </TabsContent>
           <TabsContent value="saved" className="mt-6">
             <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">

@@ -1,17 +1,19 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { SiteShell } from "@/components/layout/SiteShell";
-import { notes } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Download, Star, FileText, Lock, ShieldCheck, Clock, Eye, ArrowLeft, Share2,
 } from "lucide-react";
 import { NoteCard } from "@/components/notes/NoteCard";
+import { fetchNote, fetchNotes } from "@/lib/notes-api";
+import type { Note } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/notes/$id")({
   component: NoteDetails,
-  loader: ({ params }) => {
-    const note = notes.find((n) => n.id === params.id);
+  loader: async ({ params }) => {
+    const note = await fetchNote(params.id);
     if (!note) throw notFound();
     return { note };
   },
@@ -25,7 +27,13 @@ export const Route = createFileRoute("/notes/$id")({
 
 function NoteDetails() {
   const { note } = Route.useLoaderData();
-  const related = notes.filter((n) => n.subjectSlug === note.subjectSlug && n.id !== note.id).slice(0, 4);
+  const [related, setRelated] = useState<Note[]>([]);
+  useEffect(() => {
+    fetchNotes({ subjectSlug: note.subjectSlug })
+      .then((all) => setRelated(all.filter((n) => n.id !== note.id).slice(0, 4)))
+      .catch(console.error);
+  }, [note.id, note.subjectSlug]);
+
 
   return (
     <SiteShell>
