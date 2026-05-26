@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   Search, BookOpen, Code2, Cpu, Sigma, Atom, FlaskConical, Briefcase,
   TrendingUp, Upload, ShieldCheck, Sparkles, Star, ArrowRight, Quote,
@@ -8,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { NoteCard } from "@/components/notes/NoteCard";
-import { subjects, notes, testimonials, universities } from "@/lib/mock-data";
+import { subjects, testimonials, universities, type Note } from "@/lib/mock-data";
+import { fetchNotes } from "@/lib/notes-api";
+
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -132,6 +135,10 @@ function PopularSubjects() {
 }
 
 function FeaturedNotes() {
+  const [items, setItems] = useState<Note[]>([]);
+  useEffect(() => {
+    fetchNotes().then((n) => setItems(n.slice(0, 4))).catch(console.error);
+  }, []);
   return (
     <section className="py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -147,7 +154,7 @@ function FeaturedNotes() {
           </Link>
         </div>
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {notes.slice(0, 4).map((n) => (
+          {items.map((n) => (
             <NoteCard key={n.id} note={n} />
           ))}
         </div>
@@ -155,6 +162,7 @@ function FeaturedNotes() {
     </section>
   );
 }
+
 
 function HowItWorks() {
   const steps = [
