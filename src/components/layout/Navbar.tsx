@@ -1,8 +1,10 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Menu, X, Search, Upload } from "lucide-react";
+import { Menu, X, Search, Upload, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 import logo from "@/assets/logo.png";
+
 
 const nav = [
   { to: "/browse", label: "Browse Notes" },
@@ -13,7 +15,13 @@ const nav = [
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  return (
+  const { user, signOut, loading } = useAuth();
+  const navigate = useNavigate();
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/" });
+  };
+
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2">
