@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { useState } from "react";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,13 +7,64 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { UploadCloud, ShieldCheck, Wallet } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/upload")({
+  beforeLoad: async ({ location }) => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) throw redirect({ to: "/login", search: { redirect: location.href } });
+  },
   component: UploadPage,
   head: () => ({ meta: [{ title: "Upload Notes — NotesKhuji" }] }),
 });
 
+function slugify(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 function UploadPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    title: "",
+    subject: "",
+    university: "",
+    description: "",
+    tier: "Free",
+    price: "0",
+    pages: "0",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setSaving(true);
+    const premium = form.tier === "Premium";
+    const { error } = await supabase.from("notes").insert({
+      user_id: user.id,
+      title: form.title,
+      subject: form.subject,
+      subject_slug: slugify(form.subject),
+      university: form.university,
+      author: user.email ?? "Student",
+      pages: parseInt(form.pages || "0", 10),
+      price: premium ? parseInt(form.price || "0", 10) : 0,
+      premium,
+      preview: form.description,
+      tags: [],
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Note submitted! It will appear once approved.");
+    navigate({ to: "/dashboard" });
+  };
+
   return (
     <SiteShell>
       <section className="border-b border-border/60 bg-muted/20">
@@ -28,7 +80,7 @@ function UploadPage() {
 
       <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
-          <form className="space-y-5 rounded-2xl border border-border bg-card p-6">
+          <form onSubmit={submit} className="space-y-5 rounded-2xl border border-border bg-card p-6">
             <div>
               <Label>PDF file</Label>
               <label className="mt-1.5 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-background px-6 py-12 text-center transition-colors hover:border-primary/40 hover:bg-accent/30">
@@ -40,36 +92,42 @@ function UploadPage() {
             </div>
             <div>
               <Label htmlFor="title">Title</Label>
-              <Input id="title" placeholder="e.g. Data Structures — Complete Notes" className="mt-1.5" />
+              <Input id="title" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Data Structures — Complete Notes" className="mt-1.5" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="subject">Subject</Label>
-                <Input id="subject" placeholder="Computer Science" className="mt-1.5" />
+                <Input id="subject" required value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="Computer Science" className="mt-1.5" />
               </div>
               <div>
                 <Label htmlFor="uni">University</Label>
-                <Input id="uni" placeholder="BUET" className="mt-1.5" />
+                <Input id="uni" required value={form.university} onChange={(e) => setForm({ ...form, university: e.target.value })} placeholder="BUET" className="mt-1.5" />
               </div>
             </div>
             <div>
               <Label htmlFor="desc">Description</Label>
-              <Textarea id="desc" placeholder="Briefly describe what's inside…" className="mt-1.5 min-h-[110px]" />
+              <Textarea id="desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Briefly describe what's inside…" className="mt-1.5 min-h-[110px]" />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="pages">Pages</Label>
+                <Input id="pages" type="number" min="0" value={form.pages} onChange={(e) => setForm({ ...form, pages: e.target.value })} className="mt-1.5" />
+              </div>
               <div>
                 <Label htmlFor="tier">Pricing</Label>
-                <select id="tier" className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                <select id="tier" value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value })} className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
                   <option>Free</option>
                   <option>Premium</option>
                 </select>
               </div>
               <div>
                 <Label htmlFor="price">Price (BDT)</Label>
-                <Input id="price" type="number" placeholder="e.g. 149" className="mt-1.5" />
+                <Input id="price" type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="149" className="mt-1.5" />
               </div>
             </div>
-            <Button type="button" className="brand-gradient w-full text-white">Submit for review</Button>
+            <Button type="submit" disabled={saving} className="brand-gradient w-full text-white">
+              {saving ? "Submitting…" : "Submit for review"}
+            </Button>
           </form>
 
           <aside className="space-y-5">

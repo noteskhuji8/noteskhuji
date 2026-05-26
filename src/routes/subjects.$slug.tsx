@@ -1,7 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { NoteCard } from "@/components/notes/NoteCard";
-import { notes, subjects } from "@/lib/mock-data";
+import { subjects, type Note } from "@/lib/mock-data";
+import { fetchNotes } from "@/lib/notes-api";
 import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/subjects/$slug")({
@@ -21,7 +23,11 @@ export const Route = createFileRoute("/subjects/$slug")({
 
 function SubjectPage() {
   const { subject } = Route.useLoaderData();
-  const filtered = notes.filter((n) => n.subjectSlug === subject.slug);
+  const [filtered, setFiltered] = useState<Note[]>([]);
+  useEffect(() => {
+    fetchNotes({ subjectSlug: subject.slug }).then(setFiltered).catch(console.error);
+  }, [subject.slug]);
+
   return (
     <SiteShell>
       <section className={`relative overflow-hidden bg-gradient-to-br ${subject.color} text-white`}>
