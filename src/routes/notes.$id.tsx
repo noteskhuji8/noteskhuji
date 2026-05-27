@@ -1,14 +1,24 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Download, Star, FileText, Lock, ShieldCheck, Clock, Eye, ArrowLeft, Share2,
+  Download, Star, FileText, Lock, ShieldCheck, Clock, Eye, ArrowLeft, Share2, Loader2,
 } from "lucide-react";
 import { NoteCard } from "@/components/notes/NoteCard";
 import { fetchNote, fetchNotes } from "@/lib/notes-api";
 import type { Note } from "@/lib/mock-data";
+import { useAuth } from "@/hooks/use-auth";
+import { PdfViewerClient } from "@/components/notes/PdfViewerClient";
+import {
+  getNoteFileUrl,
+  getNotePreviewUrl,
+  purchaseNote,
+  checkNoteAccess,
+} from "@/lib/notes.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/notes/$id")({
   component: NoteDetails,
@@ -27,13 +37,81 @@ export const Route = createFileRoute("/notes/$id")({
 
 function NoteDetails() {
   const { note } = Route.useLoaderData();
+  const { user } = useAuth();
   const [related, setRelated] = useState<Note[]>([]);
+  const [access, setAccess] = useState<{ hasAccess: boolean; isOwner: boolean; isFree: boolean } | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfMode, setPdfMode] = useState<"full" | "preview" | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+
+  const fetchAccess = useServerFn(checkNoteAccess);
+  const fetchFile = useServerFn(getNoteFileUrl);
+  const fetchPreview = useServerFn(getNotePreviewUrl);
+  const buy = useServerFn(purchaseNote);
+
   useEffect(() => {
     fetchNotes({ subjectSlug: note.subjectSlug })
       .then((all) => setRelated(all.filter((n) => n.id !== note.id).slice(0, 4)))
       .catch(console.error);
   }, [note.id, note.subjectSlug]);
 
+  // Resolve access + PDF URL
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingPdf(true);
+    setPdfUrl(null);
+    (async () => {
+      try {
+        if (user) {
+          const a = await fetchAccess({ data: { noteId: note.id } });
+          if (cancelled) return;
+          setAccess(a);
+          if (a.hasAccess) {
+            const { url } = await fetchFile({ data: { noteId: note.id } });
+            if (cancelled) return;
+            setPdfUrl(url);
+            setPdfMode("full");
+            return;
+          }
+        } else {
+          setAccess({ hasAccess: false, isOwner: false, isFree: !note.premium && note.price === 0 });
+        }
+        // Fall back to preview
+        const { url } = await fetchPreview({ data: { noteId: note.id } });
+        if (cancelled) return;
+        setPdfUrl(url);
+        setPdfMode("preview");
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (!cancelled) setLoadingPdf(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [note.id, user?.id]);
+
+  const onPurchase = async () => {
+    if (!user) {
+      toast.error("Please log in to purchase this note.");
+      return;
+    }
+    setPurchasing(true);
+    try {
+      await buy({ data: { noteId: note.id } });
+      toast.success("Purchase complete — enjoy your notes!");
+      const { url } = await fetchFile({ data: { noteId: note.id } });
+      setPdfUrl(url);
+      setPdfMode("full");
+      setAccess((a) => (a ? { ...a, hasAccess: true } : a));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Purchase failed");
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const showPaywall = pdfMode === "preview" && !access?.hasAccess && (note.premium || note.price > 0);
 
   return (
     <SiteShell>
@@ -83,7 +161,7 @@ function NoteDetails() {
                 <Download className="h-4 w-4" /> {note.downloads.toLocaleString()} downloads
               </span>
               <span className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4" /> Updated 2 weeks ago
+                <Clock className="h-4 w-4" /> Updated recently
               </span>
             </div>
 
@@ -92,23 +170,61 @@ function NoteDetails() {
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{note.preview}</p>
               <ul className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                 <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Admin verified quality</li>
-                <li className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Searchable PDF</li>
-                <li className="flex items-center gap-2"><Download className="h-4 w-4 text-primary" /> Instant download</li>
-                <li className="flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /> 5-page free preview</li>
+                <li className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> In-app PDF viewer</li>
+                <li className="flex items-center gap-2"><Lock className="h-4 w-4 text-primary" /> Download disabled</li>
+                <li className="flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /> Free 3-page preview</li>
               </ul>
             </div>
 
             <div className="mt-8">
-              <h2 className="font-display text-lg font-semibold">Preview</h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className={`aspect-[3/4] rounded-xl bg-gradient-to-br ${note.cover} opacity-90 ring-1 ring-border`}>
-                    <div className="flex h-full items-end justify-end p-3">
-                      <span className="rounded bg-black/40 px-2 py-0.5 text-xs text-white">Page {i + 1}</span>
-                    </div>
-                  </div>
-                ))}
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-display text-lg font-semibold">
+                  {pdfMode === "full" ? "Full document" : "Free preview"}
+                </h2>
+                {pdfMode === "preview" && (
+                  <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">
+                    First 3 pages
+                  </Badge>
+                )}
               </div>
+              {loadingPdf ? (
+                <div className="flex h-[500px] items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading secure viewer…
+                </div>
+              ) : !pdfUrl ? (
+                <div className="flex h-[200px] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card p-6 text-center text-muted-foreground">
+                  <FileText className="mb-2 h-6 w-6" />
+                  No previewable file is attached to this note yet.
+                </div>
+              ) : (
+                <div className="relative">
+                  <PdfViewerClient
+                    url={pdfUrl}
+                    watermark={user?.email ?? "NotesKhuji"}
+                  />
+                  {showPaywall && (
+                    <div className="mt-6 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-accent/30 p-6 text-center">
+                      <Lock className="mx-auto h-7 w-7 text-primary" />
+                      <h3 className="mt-3 font-display text-xl font-semibold">Purchase to read the rest</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Unlock the full {note.pages}-page document with instant in-app access.
+                      </p>
+                      <Button
+                        className="brand-gradient mt-4 text-white"
+                        size="lg"
+                        disabled={purchasing}
+                        onClick={onPurchase}
+                      >
+                        {purchasing ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing…</>
+                        ) : (
+                          <>Unlock for ৳{note.price}</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -120,12 +236,28 @@ function NoteDetails() {
                 </span>
                 {note.premium && <span className="text-sm text-muted-foreground line-through">৳{note.price + 100}</span>}
               </div>
-              <Button className="brand-gradient mt-5 w-full text-white shadow-md" size="lg">
-                {note.price === 0 ? <><Download className="mr-2 h-4 w-4" /> Download PDF</> : <><Lock className="mr-2 h-4 w-4" /> Purchase & download</>}
-              </Button>
-              <Button variant="outline" className="mt-2 w-full" size="lg">
-                <Eye className="mr-2 h-4 w-4" /> Free preview
-              </Button>
+              {access?.hasAccess ? (
+                <Button className="brand-gradient mt-5 w-full text-white shadow-md" size="lg" disabled>
+                  <ShieldCheck className="mr-2 h-4 w-4" /> You own this
+                </Button>
+              ) : note.premium || note.price > 0 ? (
+                <Button
+                  className="brand-gradient mt-5 w-full text-white shadow-md"
+                  size="lg"
+                  disabled={purchasing}
+                  onClick={onPurchase}
+                >
+                  {purchasing ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing…</>
+                  ) : (
+                    <><Lock className="mr-2 h-4 w-4" /> Purchase access</>
+                  )}
+                </Button>
+              ) : (
+                <Button className="brand-gradient mt-5 w-full text-white shadow-md" size="lg" disabled>
+                  <Eye className="mr-2 h-4 w-4" /> Free to read above
+                </Button>
+              )}
               <Button variant="ghost" className="mt-2 w-full" size="sm">
                 <Share2 className="mr-2 h-4 w-4" /> Share
               </Button>
