@@ -20,13 +20,17 @@ export type Database = {
           author: string
           cover: string
           created_at: string
+          description: string
           downloads: number
+          file_path: string | null
           id: string
           pages: number
           premium: boolean
           preview: string
           price: number
           rating: number
+          semester: string
+          status: string
           subject: string
           subject_slug: string
           tags: string[]
@@ -39,13 +43,17 @@ export type Database = {
           author: string
           cover?: string
           created_at?: string
+          description?: string
           downloads?: number
+          file_path?: string | null
           id?: string
           pages?: number
           premium?: boolean
           preview?: string
           price?: number
           rating?: number
+          semester?: string
+          status?: string
           subject: string
           subject_slug: string
           tags?: string[]
@@ -58,13 +66,17 @@ export type Database = {
           author?: string
           cover?: string
           created_at?: string
+          description?: string
           downloads?: number
+          file_path?: string | null
           id?: string
           pages?: number
           premium?: boolean
           preview?: string
           price?: number
           rating?: number
+          semester?: string
+          status?: string
           subject?: string
           subject_slug?: string
           tags?: string[]
@@ -97,6 +109,38 @@ export type Database = {
           university?: string | null
         }
         Relationships: []
+      }
+      purchases: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          note_id: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          note_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          note_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
