@@ -187,9 +187,14 @@ function NoteDetails() {
                   </Badge>
                 )}
               </div>
-              {loadingPdf || !pdfUrl ? (
+              {loadingPdf ? (
                 <div className="flex h-[500px] items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading secure viewer…
+                </div>
+              ) : !pdfUrl ? (
+                <div className="flex h-[200px] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card p-6 text-center text-muted-foreground">
+                  <FileText className="mb-2 h-6 w-6" />
+                  No previewable file is attached to this note yet.
                 </div>
               ) : (
                 <div className="relative">
