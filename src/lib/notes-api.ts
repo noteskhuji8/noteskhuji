@@ -48,7 +48,7 @@ export async function fetchNotes(filters: BrowseFilters = {}): Promise<Note[]> {
   let query = supabase
     .from("notes")
     .select("*")
-    .eq("approved", true)
+    .eq("status", "approved")
     .order("created_at", { ascending: false });
 
   if (filters.subjectSlug) query = query.eq("subject_slug", filters.subjectSlug);

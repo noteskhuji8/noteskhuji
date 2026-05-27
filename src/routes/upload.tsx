@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { UploadCloud, ShieldCheck, Wallet } from "lucide-react";
+import { UploadCloud, ShieldCheck, Wallet, FileText, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -24,45 +24,85 @@ function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+const MAX_BYTES = 50 * 1024 * 1024;
+
 function UploadPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [form, setForm] = useState({
     title: "",
     subject: "",
     university: "",
     description: "",
+    semester: "",
     tier: "Free",
     price: "0",
-    pages: "0",
   });
   const [saving, setSaving] = useState(false);
+
+  const onPickFile = (f: File | null) => {
+    if (!f) return setFile(null);
+    if (f.type !== "application/pdf") {
+      toast.error("Only PDF files are allowed.");
+      return;
+    }
+    if (f.size > MAX_BYTES) {
+      toast.error("File exceeds the 50MB limit.");
+      return;
+    }
+    setFile(f);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    setSaving(true);
-    const premium = form.tier === "Premium";
-    const { error } = await supabase.from("notes").insert({
-      user_id: user.id,
-      title: form.title,
-      subject: form.subject,
-      subject_slug: slugify(form.subject),
-      university: form.university,
-      author: user.email ?? "Student",
-      pages: parseInt(form.pages || "0", 10),
-      price: premium ? parseInt(form.price || "0", 10) : 0,
-      premium,
-      preview: form.description,
-      tags: [],
-    });
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
+    if (!file) {
+      toast.error("Please attach a PDF file.");
       return;
     }
-    toast.success("Note submitted! It will appear once approved.");
-    navigate({ to: "/dashboard" });
+    setSaving(true);
+    try {
+      const ext = "pdf";
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("notes").upload(path, file, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+      if (up.error) throw new Error(up.error.message);
+
+      const premium = form.tier === "Premium";
+      const pageEstimate = Math.max(1, Math.round(file.size / 50000));
+      const { error } = await supabase.from("notes").insert({
+        user_id: user.id,
+        title: form.title,
+        subject: form.subject,
+        subject_slug: slugify(form.subject),
+        university: form.university,
+        author: user.email ?? "Student",
+        pages: pageEstimate,
+        price: premium ? parseInt(form.price || "0", 10) : 0,
+        premium,
+        description: form.description,
+        semester: form.semester,
+        preview: form.description.slice(0, 220),
+        file_path: path,
+        status: "pending",
+        tags: [],
+      });
+      if (error) {
+        // Clean up the orphaned file if the row insert failed.
+        await supabase.storage.from("notes").remove([path]);
+        throw new Error(error.message);
+      }
+      toast.success("Note submitted! It will appear once approved.");
+      navigate({ to: "/dashboard" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -83,16 +123,50 @@ function UploadPage() {
           <form onSubmit={submit} className="space-y-5 rounded-2xl border border-border bg-card p-6">
             <div>
               <Label>PDF file</Label>
-              <label className="mt-1.5 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-background px-6 py-12 text-center transition-colors hover:border-primary/40 hover:bg-accent/30">
-                <UploadCloud className="h-8 w-8 text-primary" />
-                <p className="mt-3 text-sm font-medium">Click to upload or drag and drop</p>
-                <p className="text-xs text-muted-foreground">PDF up to 50MB</p>
-                <input type="file" accept="application/pdf" className="hidden" />
-              </label>
+              {file ? (
+                <div className="mt-1.5 flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setFile(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <label
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    onPickFile(e.dataTransfer.files?.[0] ?? null);
+                  }}
+                  className="mt-1.5 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-background px-6 py-12 text-center transition-colors hover:border-primary/40 hover:bg-accent/30"
+                >
+                  <UploadCloud className="h-8 w-8 text-primary" />
+                  <p className="mt-3 text-sm font-medium">Click to upload or drag and drop</p>
+                  <p className="text-xs text-muted-foreground">PDF up to 50MB</p>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              )}
             </div>
             <div>
               <Label htmlFor="title">Title</Label>
               <Input id="title" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Data Structures — Complete Notes" className="mt-1.5" />
+            </div>
+            <div>
+              <Label htmlFor="desc">Description</Label>
+              <Textarea id="desc" required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Briefly describe what's inside…" className="mt-1.5 min-h-[110px]" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -104,14 +178,10 @@ function UploadPage() {
                 <Input id="uni" required value={form.university} onChange={(e) => setForm({ ...form, university: e.target.value })} placeholder="BUET" className="mt-1.5" />
               </div>
             </div>
-            <div>
-              <Label htmlFor="desc">Description</Label>
-              <Textarea id="desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Briefly describe what's inside…" className="mt-1.5 min-h-[110px]" />
-            </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <Label htmlFor="pages">Pages</Label>
-                <Input id="pages" type="number" min="0" value={form.pages} onChange={(e) => setForm({ ...form, pages: e.target.value })} className="mt-1.5" />
+                <Label htmlFor="sem">Semester</Label>
+                <Input id="sem" value={form.semester} onChange={(e) => setForm({ ...form, semester: e.target.value })} placeholder="Spring 2025" className="mt-1.5" />
               </div>
               <div>
                 <Label htmlFor="tier">Pricing</Label>
@@ -122,11 +192,11 @@ function UploadPage() {
               </div>
               <div>
                 <Label htmlFor="price">Price (BDT)</Label>
-                <Input id="price" type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="149" className="mt-1.5" />
+                <Input id="price" type="number" min="0" disabled={form.tier === "Free"} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="149" className="mt-1.5" />
               </div>
             </div>
             <Button type="submit" disabled={saving} className="brand-gradient w-full text-white">
-              {saving ? "Submitting…" : "Submit for review"}
+              {saving ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…</>) : "Submit for review"}
             </Button>
           </form>
 
