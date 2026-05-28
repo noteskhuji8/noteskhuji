@@ -11,6 +11,7 @@ import { SiteShell } from "@/components/layout/SiteShell";
 import { NoteCard } from "@/components/notes/NoteCard";
 import { subjects, testimonials, universities, type Note } from "@/lib/mock-data";
 import { fetchNotes } from "@/lib/notes-api";
+import { supabase } from "@/integrations/supabase/client";
 
 
 export const Route = createFileRoute("/")({
@@ -137,7 +138,20 @@ function PopularSubjects() {
 function FeaturedNotes() {
   const [items, setItems] = useState<Note[]>([]);
   useEffect(() => {
-    fetchNotes().then((n) => setItems(n.slice(0, 4))).catch(console.error);
+    const load = () =>
+      fetchNotes().then((n) => setItems(n.slice(0, 4))).catch(console.error);
+    load();
+    const channel = supabase
+      .channel("home-featured-notes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notes" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, []);
   return (
     <section className="py-20">

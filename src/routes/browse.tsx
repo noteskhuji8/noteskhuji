@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { subjects, universities, type Note } from "@/lib/mock-data";
 import { fetchNotes } from "@/lib/notes-api";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/browse")({
   component: Browse,
@@ -34,13 +35,24 @@ function Browse() {
 
   useEffect(() => {
     setLoading(true);
-    const t = setTimeout(() => {
+    const run = () =>
       fetchNotes({ q, subjectSlug: subject, universityShort: uniShort, tier })
         .then(setNotes)
         .catch(console.error)
         .finally(() => setLoading(false));
-    }, 250);
-    return () => clearTimeout(t);
+    const t = setTimeout(run, 250);
+    const channel = supabase
+      .channel("browse-notes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notes" },
+        () => run(),
+      )
+      .subscribe();
+    return () => {
+      clearTimeout(t);
+      void supabase.removeChannel(channel);
+    };
   }, [q, subject, uniShort, tier]);
 
   const filtered = notes;
