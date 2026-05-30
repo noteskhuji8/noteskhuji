@@ -1,5 +1,4 @@
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { ShieldCheck, ExternalLink, Check, X, Loader2 } from "lucide-react";
 import { SiteShell } from "@/components/layout/SiteShell";
@@ -8,10 +7,27 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { getAdminNoteFileUrl, setNoteStatus } from "@/lib/admin.functions";
 import { toast } from "sonner";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+const envUrl = import.meta.env.VITE_SUPABASE_URL;
+const envAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+if (!envUrl || !envAnonKey) {
+  throw new Error(
+    "Missing Supabase environment variable(s): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY.",
+  );
+}
+
+const supabase = createClient<Database>(envUrl, envAnonKey, {
+  auth: {
+    storage: typeof window !== "undefined" ? localStorage : undefined,
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
 
 type PendingNote = {
   id: string;
@@ -44,8 +60,6 @@ function AdminDashboard() {
   const { user } = useAuth();
   const [notes, setNotes] = useState<PendingNote[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const getUrl = useServerFn(getAdminNoteFileUrl);
-  const setStatus = useServerFn(setNoteStatus);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -79,8 +93,22 @@ function AdminDashboard() {
 
   const handleView = async (id: string) => {
     try {
-      const { url } = await getUrl({ data: { noteId: id } });
-      window.open(url, "_blank", "noopener");
+      const { data: note, error: noteError } = await supabase
+        .from("notes")
+        .select("file_path")
+        .eq("id", id)
+        .maybeSingle();
+      if (noteError) throw noteError;
+      if (!note?.file_path) throw new Error("File not available");
+
+      const { data: signed, error: signedError } = await supabase.storage
+        .from("notes")
+        .createSignedUrl(note.file_path, 60 * 10);
+      if (signedError || !signed?.signedUrl) {
+        throw signedError ?? new Error("Could not open file");
+      }
+
+      window.open(signed.signedUrl, "_blank", "noopener");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not open file");
     }
@@ -89,7 +117,11 @@ function AdminDashboard() {
   const handleSet = async (id: string, status: "approved" | "rejected") => {
     setBusyId(id);
     try {
-      await setStatus({ data: { noteId: id, status } });
+      const { error } = await supabase
+        .from("notes")
+        .update({ status, approved: status === "approved" })
+        .eq("id", id);
+      if (error) throw error;
       toast.success(`Note ${status}`);
       setNotes((prev) => prev?.filter((n) => n.id !== id) ?? null);
     } catch (e) {
