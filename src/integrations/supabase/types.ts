@@ -86,6 +86,36 @@ export type Database = {
         }
         Relationships: []
       }
+      payout_history: {
+        Row: {
+          amount: number
+          author_id: string
+          id: string
+          note_ids: string[]
+          notes: string | null
+          paid_at: string
+          paid_by: string | null
+        }
+        Insert: {
+          amount?: number
+          author_id: string
+          id?: string
+          note_ids?: string[]
+          notes?: string | null
+          paid_at?: string
+          paid_by?: string | null
+        }
+        Update: {
+          amount?: number
+          author_id?: string
+          id?: string
+          note_ids?: string[]
+          notes?: string | null
+          paid_at?: string
+          paid_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
