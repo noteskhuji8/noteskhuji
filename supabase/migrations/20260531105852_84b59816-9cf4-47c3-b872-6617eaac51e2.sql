@@ -1,5 +1,6 @@
 -- payout_history + admin policies. profiles already exists from baseline migration; do not recreate.
 
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS approved boolean NOT NULL DEFAULT false;
 CREATE TABLE IF NOT EXISTS public.payout_history (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   author_id uuid NOT NULL,
