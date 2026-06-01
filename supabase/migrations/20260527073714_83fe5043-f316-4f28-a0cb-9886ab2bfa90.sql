@@ -48,7 +48,9 @@ CREATE POLICY "Users create own purchases"
 -- 3. Private storage bucket for PDFs
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('notes', 'notes', false)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name,
+    public = EXCLUDED.public;
 
 DROP POLICY IF EXISTS "Owners upload own note files" ON storage.objects;
 CREATE POLICY "Owners upload own note files"
