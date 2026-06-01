@@ -1,5 +1,5 @@
-
-create table public.profiles (
+-- Idempotent baseline: profiles + notes
+create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
   university text,
@@ -8,10 +8,15 @@ create table public.profiles (
 );
 alter table public.profiles enable row level security;
 
+drop policy if exists "Profiles are viewable by owner" on public.profiles;
 create policy "Profiles are viewable by owner"
   on public.profiles for select to authenticated using (auth.uid() = id);
+
+drop policy if exists "Users can insert own profile" on public.profiles;
 create policy "Users can insert own profile"
   on public.profiles for insert to authenticated with check (auth.uid() = id);
+
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile"
   on public.profiles for update to authenticated using (auth.uid() = id);
 
@@ -30,11 +35,12 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
-create table public.notes (
+create table if not exists public.notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
   title text not null,
@@ -54,19 +60,28 @@ create table public.notes (
   created_at timestamptz not null default now()
 );
 
-create index notes_subject_slug_idx on public.notes (subject_slug);
-create index notes_university_idx on public.notes (university);
-create index notes_created_at_idx on public.notes (created_at desc);
+create index if not exists notes_subject_slug_idx on public.notes (subject_slug);
+create index if not exists notes_university_idx on public.notes (university);
+create index if not exists notes_created_at_idx on public.notes (created_at desc);
 
 alter table public.notes enable row level security;
 
+drop policy if exists "Approved notes are public" on public.notes;
 create policy "Approved notes are public"
   on public.notes for select to anon, authenticated using (approved = true);
+
+drop policy if exists "Users can view own notes" on public.notes;
 create policy "Users can view own notes"
   on public.notes for select to authenticated using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own notes" on public.notes;
 create policy "Users can insert own notes"
   on public.notes for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update own notes" on public.notes;
 create policy "Users can update own notes"
   on public.notes for update to authenticated using (auth.uid() = user_id);
+
+drop policy if exists "Users can delete own notes" on public.notes;
 create policy "Users can delete own notes"
   on public.notes for delete to authenticated using (auth.uid() = user_id);

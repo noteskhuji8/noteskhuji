@@ -1,16 +1,17 @@
-
 -- 1. Extend notes table
 ALTER TABLE public.notes
   ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS semester TEXT NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS file_path TEXT,
-  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'approved', 'rejected'));
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
 
--- Backfill existing rows: previously-approved rows stay visible
+DO $$ BEGIN
+  ALTER TABLE public.notes ADD CONSTRAINT notes_status_check
+    CHECK (status IN ('pending', 'approved', 'rejected'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 UPDATE public.notes SET status = 'approved' WHERE approved = true AND status = 'pending';
 
--- Update RLS: public can only see approved notes (replaces the prior approved=true policy)
 DROP POLICY IF EXISTS "Approved notes are public" ON public.notes;
 CREATE POLICY "Approved notes are public"
   ON public.notes FOR SELECT
@@ -32,11 +33,13 @@ GRANT ALL ON public.purchases TO service_role;
 
 ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users view own purchases" ON public.purchases;
 CREATE POLICY "Users view own purchases"
   ON public.purchases FOR SELECT
   TO authenticated
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users create own purchases" ON public.purchases;
 CREATE POLICY "Users create own purchases"
   ON public.purchases FOR INSERT
   TO authenticated
@@ -47,7 +50,7 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('notes', 'notes', false)
 ON CONFLICT (id) DO NOTHING;
 
--- Storage policies: files are stored under `${user_id}/${uuid}.pdf`
+DROP POLICY IF EXISTS "Owners upload own note files" ON storage.objects;
 CREATE POLICY "Owners upload own note files"
   ON storage.objects FOR INSERT
   TO authenticated
@@ -56,6 +59,7 @@ CREATE POLICY "Owners upload own note files"
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
 
+DROP POLICY IF EXISTS "Owners read own note files" ON storage.objects;
 CREATE POLICY "Owners read own note files"
   ON storage.objects FOR SELECT
   TO authenticated
@@ -64,6 +68,7 @@ CREATE POLICY "Owners read own note files"
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
 
+DROP POLICY IF EXISTS "Owners delete own note files" ON storage.objects;
 CREATE POLICY "Owners delete own note files"
   ON storage.objects FOR DELETE
   TO authenticated
