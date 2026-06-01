@@ -6,6 +6,8 @@ create table if not exists public.profiles (
   avatar_url text,
   created_at timestamptz not null default now()
 );
+grant select, insert, update on public.profiles to authenticated;
+grant all on public.profiles to service_role;
 alter table public.profiles enable row level security;
 
 drop policy if exists "Profiles are viewable by owner" on public.profiles;
@@ -59,6 +61,10 @@ create table if not exists public.notes (
   approved boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+grant select on public.notes to anon;
+grant select, insert, update, delete on public.notes to authenticated;
+grant all on public.notes to service_role;
 
 create index if not exists notes_subject_slug_idx on public.notes (subject_slug);
 create index if not exists notes_university_idx on public.notes (university);
