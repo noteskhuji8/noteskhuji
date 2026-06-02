@@ -1,27 +1,8 @@
-// Browser-only Supabase client used by the admin dashboard.
-// Kept separate so analytics/payout tabs reuse a single GoTrue instance.
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 
-const envUrl = import.meta.env.VITE_SUPABASE_URL;
-const envAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ??
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-if (!envUrl || !envAnonKey) {
-  throw new Error(
-    "Missing Supabase environment variable(s): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY.",
-  );
-}
-
-export const adminSupabase = createClient<Database>(envUrl, envAnonKey, {
-  auth: {
-    storage: typeof window !== "undefined" ? localStorage : undefined,
-    persistSession: true,
-    autoRefreshToken: true,
-    storageKey: "sb-admin-dashboard",
-  },
-});
+// Reuse the app's primary browser client so admin routes read the same
+// authenticated session and role claims as the rest of the dashboard.
+export const adminSupabase = supabase;
 
 export const PLATFORM_COMMISSION = 0.2; // 20%
 export const AUTHOR_SHARE = 1 - PLATFORM_COMMISSION;

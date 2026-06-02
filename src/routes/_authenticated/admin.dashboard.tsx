@@ -11,17 +11,28 @@ import { TransactionsTab } from "@/components/admin/TransactionsTab";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   head: () => ({ meta: [{ title: "Admin Dashboard — NotesKhuji" }] }),
-  beforeLoad: async () => {
-    const { data: sess } = await supabase.auth.getSession();
-    const userId = sess.session?.user.id;
-    if (!userId) throw redirect({ to: "/login" });
-    const { data: role } = await supabase
+  beforeLoad: async ({ location }) => {
+    const { data, error } = await supabase.auth.getUser();
+    const userId = data.user?.id;
+
+    if (error || !userId) {
+      throw redirect({ to: "/login", search: { redirect: location.href } });
+    }
+
+    const { data: role, error: roleError } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle();
-    if (!role) throw redirect({ to: "/" });
+
+    if (roleError) {
+      throw roleError;
+    }
+
+    if (!role) {
+      throw redirect({ to: "/dashboard" });
+    }
   },
   component: AdminDashboard,
 });
