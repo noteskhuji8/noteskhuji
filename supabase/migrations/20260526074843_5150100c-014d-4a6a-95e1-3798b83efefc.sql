@@ -66,6 +66,19 @@ grant select on public.notes to anon;
 grant select, insert, update, delete on public.notes to authenticated;
 grant all on public.notes to service_role;
 
+-- Ensure columns exist on pre-existing notes tables (CREATE TABLE IF NOT EXISTS
+-- skips column additions when the table already exists from an earlier run).
+alter table public.notes add column if not exists subject_slug text;
+alter table public.notes add column if not exists university text;
+alter table public.notes add column if not exists subject text;
+alter table public.notes add column if not exists title text;
+alter table public.notes add column if not exists author text;
+alter table public.notes add column if not exists created_at timestamptz not null default now();
+
+update public.notes set subject_slug = '' where subject_slug is null;
+alter table public.notes alter column subject_slug set default '';
+alter table public.notes alter column subject_slug set not null;
+
 create index if not exists notes_subject_slug_idx on public.notes (subject_slug);
 create index if not exists notes_university_idx on public.notes (university);
 create index if not exists notes_created_at_idx on public.notes (created_at desc);
