@@ -73,6 +73,7 @@ alter table public.notes add column if not exists university text;
 alter table public.notes add column if not exists subject text;
 alter table public.notes add column if not exists title text;
 alter table public.notes add column if not exists author text;
+alter table public.notes add column if not exists approved boolean not null default false;
 alter table public.notes add column if not exists created_at timestamptz not null default now();
 
 update public.notes set subject_slug = '' where subject_slug is null;
