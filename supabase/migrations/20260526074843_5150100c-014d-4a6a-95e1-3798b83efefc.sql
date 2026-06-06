@@ -90,6 +90,8 @@ drop policy if exists "Approved notes are public" on public.notes;
 create policy "Approved notes are public"
   on public.notes for select to anon, authenticated using (approved = true);
 
+alter table public.notes add column if not exists user_id uuid references auth.users(id) default auth.uid();
+
 drop policy if exists "Users can view own notes" on public.notes;
 create policy "Users can view own notes"
   on public.notes for select to authenticated using (auth.uid() = user_id);
