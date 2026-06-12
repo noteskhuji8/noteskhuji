@@ -189,7 +189,7 @@ function NoteDetails() {
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> {note.rating.toFixed(1)} rating
               </span>
               <span className="flex items-center gap-1.5">
-                <Download className="h-4 w-4" /> {note.downloads.toLocaleString()} downloads
+                <Download className="h-4 w-4" /> {downloadCount.toLocaleString()} downloads
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" /> Updated recently
