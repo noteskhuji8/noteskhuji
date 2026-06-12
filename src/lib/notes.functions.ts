@@ -109,6 +109,62 @@ export const purchaseNote = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Returns a short-lived signed download URL and records the download.
+ *  Allowed for: owner, purchaser, or free approved notes. */
+export const downloadNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ noteId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const note = await getNoteRow(data.noteId);
+    if (!note || !note.file_path) throw new Error("Note file not available");
+    if (note.status !== "approved") throw new Error("Note not available");
+
+    const isOwner = note.user_id === userId;
+    const isFree = !note.premium && note.price === 0;
+    let isPurchaser = false;
+    if (!isOwner && !isFree) {
+      const { data: p } = await supabaseAdmin
+        .from("purchases")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("note_id", note.id)
+        .maybeSingle();
+      isPurchaser = !!p;
+    }
+    if (!isOwner && !isFree && !isPurchaser) {
+      throw new Error("Purchase required to download this note");
+    }
+
+    const { data: signed, error } = await supabaseAdmin.storage
+      .from("notes")
+      .createSignedUrl(note.file_path, SIGNED_URL_TTL, { download: true });
+    if (error || !signed) throw new Error(error?.message ?? "Could not sign URL");
+
+    const { data: newCount, error: rpcErr } = await supabaseAdmin.rpc(
+      "record_note_download",
+      { _note_id: note.id, _user_id: userId },
+    );
+    if (rpcErr) throw new Error(rpcErr.message);
+
+    return { url: signed.signedUrl, downloads: newCount as number };
+  });
+
+/** Current user's download history (most recent first). */
+export const getMyDownloads = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { data, error } = await supabaseAdmin
+      .from("downloads")
+      .select("id, downloaded_at, note_id, notes(id, title, subject, university, cover)")
+      .eq("user_id", userId)
+      .order("downloaded_at", { ascending: false })
+      .limit(100);
+    if (error) throw new Error(error.message);
+    return { downloads: data ?? [] };
+  });
+
 /** True if current user has access (owner / purchaser / free). */
 export const checkNoteAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

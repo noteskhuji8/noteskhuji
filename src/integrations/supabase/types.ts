@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      downloads: {
+        Row: {
+          downloaded_at: string
+          id: string
+          note_id: string
+          user_id: string | null
+        }
+        Insert: {
+          downloaded_at?: string
+          id?: string
+          note_id: string
+          user_id?: string | null
+        }
+        Update: {
+          downloaded_at?: string
+          id?: string
+          note_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "downloads_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           approved: boolean
@@ -204,6 +233,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      record_note_download: {
+        Args: { _note_id: string; _user_id: string }
+        Returns: number
       }
     }
     Enums: {

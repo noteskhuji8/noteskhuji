@@ -17,6 +17,7 @@ import {
   getNotePreviewUrl,
   purchaseNote,
   checkNoteAccess,
+  downloadNote,
 } from "@/lib/notes.functions";
 import { toast } from "sonner";
 
@@ -44,11 +45,14 @@ function NoteDetails() {
   const [pdfMode, setPdfMode] = useState<"full" | "preview" | null>(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadCount, setDownloadCount] = useState<number>(note.downloads);
 
   const fetchAccess = useServerFn(checkNoteAccess);
   const fetchFile = useServerFn(getNoteFileUrl);
   const fetchPreview = useServerFn(getNotePreviewUrl);
   const buy = useServerFn(purchaseNote);
+  const download = useServerFn(downloadNote);
 
   useEffect(() => {
     fetchNotes({ subjectSlug: note.subjectSlug })
@@ -111,6 +115,33 @@ function NoteDetails() {
     }
   };
 
+  const onDownload = async () => {
+    if (!user) {
+      toast.error("Please log in to download this note.");
+      return;
+    }
+    setDownloading(true);
+    try {
+      const { url, downloads } = await download({ data: { noteId: note.id } });
+      setDownloadCount(downloads);
+      // Trigger browser download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${note.title}.pdf`;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success("Download started");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const canDownload = !!user && (access?.hasAccess ?? (!note.premium && note.price === 0));
+
   const showPaywall = pdfMode === "preview" && !access?.hasAccess && (note.premium || note.price > 0);
 
   return (
@@ -158,7 +189,7 @@ function NoteDetails() {
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> {note.rating.toFixed(1)} rating
               </span>
               <span className="flex items-center gap-1.5">
-                <Download className="h-4 w-4" /> {note.downloads.toLocaleString()} downloads
+                <Download className="h-4 w-4" /> {downloadCount.toLocaleString()} downloads
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" /> Updated recently
@@ -171,7 +202,7 @@ function NoteDetails() {
               <ul className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                 <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Admin verified quality</li>
                 <li className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> In-app PDF viewer</li>
-                <li className="flex items-center gap-2"><Lock className="h-4 w-4 text-primary" /> Download disabled</li>
+                <li className="flex items-center gap-2"><Download className="h-4 w-4 text-primary" /> Instant PDF download after unlock</li>
                 <li className="flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /> Free 3-page preview</li>
               </ul>
             </div>
@@ -254,8 +285,32 @@ function NoteDetails() {
                   )}
                 </Button>
               ) : (
-                <Button className="brand-gradient mt-5 w-full text-white shadow-md" size="lg" disabled>
-                  <Eye className="mr-2 h-4 w-4" /> Free to read above
+                <Button
+                  className="brand-gradient mt-5 w-full text-white shadow-md"
+                  size="lg"
+                  disabled={downloading || !user}
+                  onClick={onDownload}
+                >
+                  {downloading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…</>
+                  ) : (
+                    <><Download className="mr-2 h-4 w-4" /> {user ? "Download PDF" : "Log in to download"}</>
+                  )}
+                </Button>
+              )}
+              {canDownload && (note.premium || note.price > 0) && (
+                <Button
+                  variant="outline"
+                  className="mt-2 w-full"
+                  size="lg"
+                  disabled={downloading}
+                  onClick={onDownload}
+                >
+                  {downloading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…</>
+                  ) : (
+                    <><Download className="mr-2 h-4 w-4" /> Download PDF</>
+                  )}
                 </Button>
               )}
               <Button variant="ghost" className="mt-2 w-full" size="sm">
