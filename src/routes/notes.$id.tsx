@@ -45,11 +45,14 @@ function NoteDetails() {
   const [pdfMode, setPdfMode] = useState<"full" | "preview" | null>(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadCount, setDownloadCount] = useState<number>(note.downloads);
 
   const fetchAccess = useServerFn(checkNoteAccess);
   const fetchFile = useServerFn(getNoteFileUrl);
   const fetchPreview = useServerFn(getNotePreviewUrl);
   const buy = useServerFn(purchaseNote);
+  const download = useServerFn(downloadNote);
 
   useEffect(() => {
     fetchNotes({ subjectSlug: note.subjectSlug })
