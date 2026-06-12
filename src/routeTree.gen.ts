@@ -18,6 +18,7 @@ import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UniversitiesSlugRouteImport } from './routes/universities.$slug'
 import { Route as SubjectsSlugRouteImport } from './routes/subjects.$slug'
 import { Route as NotesIdRouteImport } from './routes/notes.$id'
 import { Route as BlogSlugRouteImport } from './routes/blog_.$slug'
@@ -68,6 +69,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UniversitiesSlugRoute = UniversitiesSlugRouteImport.update({
+  id: '/universities/$slug',
+  path: '/universities/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SubjectsSlugRoute = SubjectsSlugRouteImport.update({
   id: '/subjects/$slug',
   path: '/subjects/$slug',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof BlogSlugRoute
   '/notes/$id': typeof NotesIdRoute
   '/subjects/$slug': typeof SubjectsSlugRoute
+  '/universities/$slug': typeof UniversitiesSlugRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
 }
 export interface FileRoutesByTo {
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof BlogSlugRoute
   '/notes/$id': typeof NotesIdRoute
   '/subjects/$slug': typeof SubjectsSlugRoute
+  '/universities/$slug': typeof UniversitiesSlugRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
 }
 export interface FileRoutesById {
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/blog_/$slug': typeof BlogSlugRoute
   '/notes/$id': typeof NotesIdRoute
   '/subjects/$slug': typeof SubjectsSlugRoute
+  '/universities/$slug': typeof UniversitiesSlugRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
 }
 export interface FileRouteTypes {
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/notes/$id'
     | '/subjects/$slug'
+    | '/universities/$slug'
     | '/admin/dashboard'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/notes/$id'
     | '/subjects/$slug'
+    | '/universities/$slug'
     | '/admin/dashboard'
   id:
     | '__root__'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/blog_/$slug'
     | '/notes/$id'
     | '/subjects/$slug'
+    | '/universities/$slug'
     | '/_authenticated/admin/dashboard'
   fileRoutesById: FileRoutesById
 }
@@ -204,6 +216,7 @@ export interface RootRouteChildren {
   BlogSlugRoute: typeof BlogSlugRoute
   NotesIdRoute: typeof NotesIdRoute
   SubjectsSlugRoute: typeof SubjectsSlugRoute
+  UniversitiesSlugRoute: typeof UniversitiesSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -271,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/universities/$slug': {
+      id: '/universities/$slug'
+      path: '/universities/$slug'
+      fullPath: '/universities/$slug'
+      preLoaderRoute: typeof UniversitiesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/subjects/$slug': {
       id: '/subjects/$slug'
       path: '/subjects/$slug'
@@ -336,6 +356,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogSlugRoute: BlogSlugRoute,
   NotesIdRoute: NotesIdRoute,
   SubjectsSlugRoute: SubjectsSlugRoute,
+  UniversitiesSlugRoute: UniversitiesSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
