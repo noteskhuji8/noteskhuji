@@ -285,8 +285,32 @@ function NoteDetails() {
                   )}
                 </Button>
               ) : (
-                <Button className="brand-gradient mt-5 w-full text-white shadow-md" size="lg" disabled>
-                  <Eye className="mr-2 h-4 w-4" /> Free to read above
+                <Button
+                  className="brand-gradient mt-5 w-full text-white shadow-md"
+                  size="lg"
+                  disabled={downloading || !user}
+                  onClick={onDownload}
+                >
+                  {downloading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…</>
+                  ) : (
+                    <><Download className="mr-2 h-4 w-4" /> {user ? "Download PDF" : "Log in to download"}</>
+                  )}
+                </Button>
+              )}
+              {canDownload && (note.premium || note.price > 0) && (
+                <Button
+                  variant="outline"
+                  className="mt-2 w-full"
+                  size="lg"
+                  disabled={downloading}
+                  onClick={onDownload}
+                >
+                  {downloading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…</>
+                  ) : (
+                    <><Download className="mr-2 h-4 w-4" /> Download PDF</>
+                  )}
                 </Button>
               )}
               <Button variant="ghost" className="mt-2 w-full" size="sm">
