@@ -17,6 +17,7 @@ import {
   getNotePreviewUrl,
   purchaseNote,
   checkNoteAccess,
+  downloadNote,
 } from "@/lib/notes.functions";
 import { toast } from "sonner";
 
