@@ -115,6 +115,33 @@ function NoteDetails() {
     }
   };
 
+  const onDownload = async () => {
+    if (!user) {
+      toast.error("Please log in to download this note.");
+      return;
+    }
+    setDownloading(true);
+    try {
+      const { url, downloads } = await download({ data: { noteId: note.id } });
+      setDownloadCount(downloads);
+      // Trigger browser download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${note.title}.pdf`;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success("Download started");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const canDownload = !!user && (access?.hasAccess ?? (!note.premium && note.price === 0));
+
   const showPaywall = pdfMode === "preview" && !access?.hasAccess && (note.premium || note.price > 0);
 
   return (
