@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { NoteCard } from "@/components/notes/NoteCard";
-import { subjects, universities } from "@/lib/mock-data";
+import { subjects, universities, type Note } from "@/lib/mock-data";
 import { fetchNotes } from "@/lib/notes-api";
 import { ArrowLeft, BookOpen, Download as DownloadIcon, GraduationCap } from "lucide-react";
 
@@ -93,9 +93,9 @@ export const Route = createFileRoute("/universities/$slug")({
 
 function UniversityPage() {
   const { university, notes } = Route.useLoaderData();
-  const totalDownloads = notes.reduce((sum, n) => sum + (n.downloads ?? 0), 0);
-  const freeCount = notes.filter((n) => n.price === 0).length;
-  const subjectSlugsAvailable = Array.from(new Set(notes.map((n) => n.subjectSlug)));
+  const totalDownloads = notes.reduce((sum: number, n: Note) => sum + (n.downloads ?? 0), 0);
+  const freeCount = notes.filter((n: Note) => n.price === 0).length;
+  const subjectSlugsAvailable = Array.from(new Set(notes.map((n: Note) => n.subjectSlug)));
 
   return (
     <SiteShell>
@@ -161,7 +161,7 @@ function UniversityPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
-            {notes.map((n) => (
+            {notes.map((n: Note) => (
               <NoteCard key={n.id} note={n} />
             ))}
           </div>
