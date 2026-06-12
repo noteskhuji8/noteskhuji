@@ -202,7 +202,7 @@ function NoteDetails() {
               <ul className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                 <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Admin verified quality</li>
                 <li className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> In-app PDF viewer</li>
-                <li className="flex items-center gap-2"><Lock className="h-4 w-4 text-primary" /> Download disabled</li>
+                <li className="flex items-center gap-2"><Download className="h-4 w-4 text-primary" /> Instant PDF download after unlock</li>
                 <li className="flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /> Free 3-page preview</li>
               </ul>
             </div>
