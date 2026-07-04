@@ -9,7 +9,11 @@ import { AnalyticsTab, useAnalyticsData } from "@/components/admin/AnalyticsTab"
 import { PayoutsTab } from "@/components/admin/PayoutsTab";
 import { TransactionsTab } from "@/components/admin/TransactionsTab";
 
+// ssr: false — inherits the same SSR/localStorage constraint as the parent
+// _authenticated layout. The admin check has to run in the browser where the
+// session exists.
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Admin Dashboard — NotesKhuji" }] }),
   beforeLoad: async ({ location }) => {
     const { data, error } = await supabase.auth.getUser();
@@ -19,20 +23,16 @@ export const Route = createFileRoute("/_authenticated/admin/dashboard")({
       throw redirect({ to: "/login", search: { redirect: location.href } });
     }
 
-    const { data: role, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
+    // Use the has_role security-definer function so this works even if the
+    // user_roles SELECT policy doesn't grant the caller visibility on their
+    // own row for other reasons.
+    const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
 
-    if (roleError) {
-      throw roleError;
-    }
-
-    if (!role) {
-      throw redirect({ to: "/dashboard" });
-    }
+    if (roleError) throw roleError;
+    if (!isAdmin) throw redirect({ to: "/dashboard" });
   },
   component: AdminDashboard,
 });
