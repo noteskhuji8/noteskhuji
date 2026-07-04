@@ -124,9 +124,23 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
-      queryClient.invalidateQueries();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+
+      // Post-OAuth: navigate to the destination the user was trying to reach.
+      if (event === "SIGNED_IN") {
+        try {
+          const dest = sessionStorage.getItem("post-auth-redirect");
+          if (dest && dest.startsWith("/")) {
+            sessionStorage.removeItem("post-auth-redirect");
+            router.navigate({ to: dest });
+          }
+        } catch {
+          /* ignore */
+        }
+      }
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
