@@ -38,8 +38,16 @@ function Login() {
   };
 
   const handleGoogle = async () => {
+    // OAuth redirect_uri must be a public same-origin URL (not a protected
+    // route like /dashboard). We stash the intended destination in
+    // sessionStorage and navigate to it after the session hydrates.
+    try {
+      sessionStorage.setItem("post-auth-redirect", redirect);
+    } catch {
+      /* ignore */
+    }
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + redirect,
+      redirect_uri: window.location.origin,
     });
     if (result.error) toast.error("Google sign-in failed");
   };
