@@ -8,6 +8,10 @@ import { ModerationTab } from "@/components/admin/ModerationTab";
 import { AnalyticsTab, useAnalyticsData } from "@/components/admin/AnalyticsTab";
 import { PayoutsTab } from "@/components/admin/PayoutsTab";
 import { TransactionsTab } from "@/components/admin/TransactionsTab";
+import { SubjectsTab } from "@/components/admin/SubjectsTab";
+import { UniversitiesTab } from "@/components/admin/UniversitiesTab";
+import { ContentTab } from "@/components/admin/ContentTab";
+import { NotesEditorTab } from "@/components/admin/NotesEditorTab";
 
 // ssr: false — inherits the same SSR/localStorage constraint as the parent
 // _authenticated layout. The admin check has to run in the browser where the
