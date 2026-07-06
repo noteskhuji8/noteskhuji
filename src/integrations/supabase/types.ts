@@ -51,6 +51,7 @@ export type Database = {
           created_at: string
           description: string
           downloads: number
+          featured: boolean
           file_path: string | null
           id: string
           pages: number
@@ -59,6 +60,7 @@ export type Database = {
           price: number
           rating: number
           semester: string
+          sort_order: number
           status: string
           subject: string
           subject_slug: string
@@ -74,6 +76,7 @@ export type Database = {
           created_at?: string
           description?: string
           downloads?: number
+          featured?: boolean
           file_path?: string | null
           id?: string
           pages?: number
@@ -82,6 +85,7 @@ export type Database = {
           price?: number
           rating?: number
           semester?: string
+          sort_order?: number
           status?: string
           subject: string
           subject_slug: string
@@ -97,6 +101,7 @@ export type Database = {
           created_at?: string
           description?: string
           downloads?: number
+          featured?: boolean
           file_path?: string | null
           id?: string
           pages?: number
@@ -105,6 +110,7 @@ export type Database = {
           price?: number
           rating?: number
           semester?: string
+          sort_order?: number
           status?: string
           subject?: string
           subject_slug?: string
@@ -200,6 +206,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      site_content: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      universities: {
+        Row: {
+          active: boolean
+          city: string | null
+          created_at: string
+          id: string
+          logo: string | null
+          name: string
+          short: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          city?: string | null
+          created_at?: string
+          id?: string
+          logo?: string | null
+          name: string
+          short: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          city?: string | null
+          created_at?: string
+          id?: string
+          logo?: string | null
+          name?: string
+          short?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
