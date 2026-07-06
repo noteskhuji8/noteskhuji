@@ -61,26 +61,28 @@ function AdminDashboard() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <Tabs defaultValue="moderation" className="space-y-6">
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="moderation">Moderation</TabsTrigger>
+            <TabsTrigger value="notes">Notes &amp; Featured</TabsTrigger>
+            <TabsTrigger value="subjects">Subjects</TabsTrigger>
+            <TabsTrigger value="universities">Universities</TabsTrigger>
+            <TabsTrigger value="content">Site content</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="payouts">Sales &amp; Payouts</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="moderation"><ModerationTab /></TabsContent>
+          <TabsContent value="notes"><NotesEditorTab /></TabsContent>
+          <TabsContent value="subjects"><SubjectsTab /></TabsContent>
+          <TabsContent value="universities"><UniversitiesTab /></TabsContent>
+          <TabsContent value="content"><ContentTab /></TabsContent>
           <TabsContent value="analytics">
             <AnalyticsTab data={analytics.data} loading={analytics.loading} />
           </TabsContent>
-          <TabsContent value="moderation">
-            <ModerationTab />
-          </TabsContent>
-          <TabsContent value="payouts">
-            <PayoutsTab />
-          </TabsContent>
-          <TabsContent value="transactions">
-            <TransactionsTab />
-          </TabsContent>
+          <TabsContent value="payouts"><PayoutsTab /></TabsContent>
+          <TabsContent value="transactions"><TransactionsTab /></TabsContent>
         </Tabs>
       </section>
     </SiteShell>
